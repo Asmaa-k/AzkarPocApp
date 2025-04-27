@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">أذكار</string>
+    <string name="label_azkar_reminder_txt">اختر موعد التنبيهات الصباحية/المسائية</string>
+    <string name="morning_azkar_reminder_txt">أذكار الصباح</string>
+    <string name="evening_azkar_reminder_txt">أذكار المساء</string>
+    <string name="label_azkar_frequency_txt">اختر معدل ظهور الاذكار</string>
+    <string name="label_option_low">نادر</string>
+    <string name="label_option_high">عالي</string>
+    <string name="label_option_mid">متوسط</string>
+</resources>
