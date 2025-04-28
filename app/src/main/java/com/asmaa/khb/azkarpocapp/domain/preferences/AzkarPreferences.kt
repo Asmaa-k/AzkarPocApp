@@ -6,6 +6,7 @@ import com.asmaa.khb.azkarpocapp.domain.util.Constants.DEFAULT_EVENING_REMINDER
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.DEFAULT_MORNING_REMINDER
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_EVENING_REMINDER_TIME
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_FREQUENCY
+import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_IS_REMINDER_ON
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_MORNING_REMINDER_TIME
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_NAME
 import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
@@ -55,5 +56,15 @@ class AzkarPreferences @Inject constructor(
         val json = prefs.getString(PREFS_KEY_FREQUENCY, null)
         return json?.let { gson.fromJson(it, ShortAzkarFrequency::class.java) }
             ?: DEFAULT_AZKAR_FREQUENCY
+    }
+
+    fun setIsReminderOn(isOnScreen: Boolean) {
+        prefs.edit()
+            .putBoolean(PREFS_KEY_IS_REMINDER_ON, isOnScreen)
+            .apply()
+    }
+
+    fun isReminderOnScreen(): Boolean {
+        return prefs.getBoolean(PREFS_KEY_IS_REMINDER_ON, false)
     }
 }

@@ -16,21 +16,17 @@ class MorningEveningAzkarReminderReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
 
         if (action != ACTION_SHOW_MORNING_AZKAR && action != ACTION_SHOW_EVENING_AZKAR) return
+        val repository = EntryPointAccessors.fromApplication(
+            context, AzkarRepositoryEntryPoint::class.java
+        ).azkarRepository()
 
         val content = intent.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
         val imageResId = intent.getIntExtra(EXTRA_IMAGE_RES, -1)
 
-        AzkarWidgetService.showAzkar(
-            context = context,
-            content = content,
-            imgRes = imageResId,
-            isReminder = true
-        )
+        repository.setIsReminderOn(true)
 
 
-        val repository = EntryPointAccessors.fromApplication(
-            context, AzkarRepositoryEntryPoint::class.java
-        ).azkarRepository()
+        AzkarWidgetService.showAzkar(context = context, content = content, imgRes = imageResId)
 
         if (intent.action == ACTION_SHOW_MORNING_AZKAR) {
             repository.scheduleMorningAzkarReceiver()

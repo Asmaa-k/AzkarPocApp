@@ -4,7 +4,7 @@ object Constants {
     //default values
     const val CONST_AM = "AM"
     const val CONST_PM = "PM"
-    const val AUTO_SERVICE_STOPPING_PERIOD_IN_SEC = 30L
+    const val AUTO_SERVICE_STOPPING_PERIOD_IN_SEC = 10L
     const val SPLASH_DURATION_IN_SEC = 1L
     const val NOTIFICATION_ID = 12
 

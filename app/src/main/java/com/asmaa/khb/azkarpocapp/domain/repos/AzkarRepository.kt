@@ -1,5 +1,6 @@
 package com.asmaa.khb.azkarpocapp.domain.repos
 
+import android.content.Context
 import com.asmaa.khb.azkarpocapp.data.databases.AzkarDao
 import com.asmaa.khb.azkarpocapp.data.databases.AzkarEntity
 import com.asmaa.khb.azkarpocapp.domain.preferences.AzkarPreferences
@@ -8,6 +9,8 @@ import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
 import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.MorningEveningAzkarReminderScheduler
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.ShortAzkarScheduler
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -20,7 +23,8 @@ class AzkarRepository @Inject constructor(
     private val azkarPreferences: AzkarPreferences,
     private val morningEveningAzkarReminderScheduler: MorningEveningAzkarReminderScheduler,
     private val shortScheduler: ShortAzkarScheduler,
-    private val appScope: CoroutineScope
+    private val appScope: CoroutineScope,
+    @ApplicationContext private val context: Context
 ) {
 
     fun insertInitialAzkarIfNeeded() {
@@ -89,5 +93,17 @@ class AzkarRepository @Inject constructor(
 
     fun getMorningTimeFormat(): ReminderAzkarTimeFormat = azkarPreferences.getMorningTimeFormat()
 
+    fun isReminderOn(): Boolean = azkarPreferences.isReminderOnScreen()
+    fun setIsReminderOn(isOnScreen: Boolean) = azkarPreferences.setIsReminderOn(isOnScreen)
+
     suspend fun fetchRandomZker(): AzkarEntity? = dao.getRandomAzkar()
+
+    suspend fun startPopupService() {
+        val content = fetchRandomZker()?.content
+        if (!content.isNullOrBlank()) {
+            AzkarWidgetService.showAzkar(
+                context = context, content = content,
+            )
+        }
+    }
 }

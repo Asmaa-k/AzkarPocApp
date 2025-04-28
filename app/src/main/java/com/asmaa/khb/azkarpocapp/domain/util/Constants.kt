@@ -20,4 +20,5 @@ object Constants {
     const val PREFS_KEY_EVENING_REMINDER_TIME = "key_evening_reminder_time"
     const val PREFS_KEY_MORNING_REMINDER_TIME = "key_morning_reminder_time"
     const val PREFS_KEY_FREQUENCY = "azkar_frequency"
+    const val PREFS_KEY_IS_REMINDER_ON = "is_reminder_on"
 }

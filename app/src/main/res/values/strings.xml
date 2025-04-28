@@ -7,4 +7,5 @@
     <string name="label_option_low">نادر</string>
     <string name="label_option_high">عالي</string>
     <string name="label_option_mid">متوسط</string>
+    <string name="label_test">TEST</string>
 </resources>

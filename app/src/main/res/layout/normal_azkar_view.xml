@@ -2,6 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:layout_gravity="end"
     android:background="@drawable/chip_background"
     android:paddingHorizontal="8dp"
     android:paddingVertical="4dp">
@@ -10,7 +11,10 @@
         android:id="@+id/azkar_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:gravity="end|top"
+        android:padding="4dp"
         android:textColor="#000000"
-        android:textSize="12sp"
+        android:textSize="17sp"
         android:textStyle="bold" />
 </FrameLayout>

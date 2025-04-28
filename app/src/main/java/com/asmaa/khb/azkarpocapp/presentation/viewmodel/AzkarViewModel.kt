@@ -2,9 +2,9 @@ package com.asmaa.khb.azkarpocapp.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
-import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
 import com.asmaa.khb.azkarpocapp.domain.repos.AzkarRepository
+import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
+import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,5 +40,11 @@ class AzkarViewModel @Inject constructor(
 
     fun getMorningTimeFormat(): ReminderAzkarTimeFormat {
         return repository.getMorningTimeFormat()
+    }
+
+    fun startPopupService() {
+        viewModelScope.launch {
+            repository.startPopupService()
+        }
     }
 }

@@ -15,10 +15,10 @@ import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.asmaa.khb.azkarpocapp.R
+import com.asmaa.khb.azkarpocapp.domain.preferences.AzkarPreferences
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarViewFactory.NO_IMAGE
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.AUTO_SERVICE_STOPPING_PERIOD_IN_SEC
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IMAGE_RES
-import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IS_REMINDER
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_TEXT_CONTENT
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.NOTIFICATION_ID
 import kotlinx.coroutines.CoroutineScope
@@ -30,19 +30,20 @@ import java.util.concurrent.TimeUnit
 class AzkarWidgetService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
+    private lateinit var azkarPreferences: AzkarPreferences
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        azkarPreferences = AzkarPreferences(applicationContext)
     }
 
     companion object {
-        fun showAzkar(context: Context, content: String, imgRes: Int = -1, isReminder: Boolean) {
+        fun showAzkar(context: Context, content: String, imgRes: Int = -1) {
             val intent = Intent(context, AzkarWidgetService::class.java).apply {
                 putExtra(EXTRA_TEXT_CONTENT, content)
-                putExtra(EXTRA_IS_REMINDER, isReminder)
                 putExtra(EXTRA_IMAGE_RES, imgRes)
             }
             ContextCompat.startForegroundService(context, intent)
@@ -53,8 +54,7 @@ class AzkarWidgetService : Service() {
         intent?.let {
             val textContent = it.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
             val imgContent = it.getIntExtra(EXTRA_IMAGE_RES, NO_IMAGE)
-            val isReminder = it.getBooleanExtra(EXTRA_IS_REMINDER, false)
-            showAzkarView(textContent, imgContent, isReminder)
+            showAzkarView(textContent, imgContent, azkarPreferences.isReminderOnScreen())
         }
 
         createNotificationChannel()
@@ -85,10 +85,10 @@ class AzkarWidgetService : Service() {
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
             width = WindowManager.LayoutParams.WRAP_CONTENT
             height = WindowManager.LayoutParams.WRAP_CONTENT
-            gravity = Gravity.TOP or Gravity.START
+            gravity = Gravity.TOP or Gravity.END
             format = PixelFormat.TRANSLUCENT
-            x = 100
-            y = 300
+            x = 50
+            y = 50
         }
 
         overlayView = AzkarViewFactory.createAzkarView(
@@ -96,13 +96,20 @@ class AzkarWidgetService : Service() {
             textContent = textContent,
             imgContent = imgContent,
             isReminderViewType = isReminder,
-            onClose = { stopSelf() },
+            onClose = {
+                stopSelf()
+                reversReminderIfNeeded()
+            },
             onViewClick = {}
         )
 
         windowManager.addView(overlayView, layoutParams)
 
         stopTheServiceAutomaticallyInCaseNotReminder(isReminder)
+    }
+
+    private fun reversReminderIfNeeded() {
+        if (azkarPreferences.isReminderOnScreen()) azkarPreferences.setIsReminderOn(false)
     }
 
     private fun createNotificationChannel() {

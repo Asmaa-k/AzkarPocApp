@@ -30,6 +30,13 @@ class AzkarActivity : ComponentActivity() {
         setupShortAzkarRadioButton()
         setupMorningAzkarButton()
         setupEveningAzkarButton()
+        setupTestButton()
+    }
+
+    private fun setupTestButton() {
+        binding.test.setOnClickListener {
+            viewModel.startPopupService()
+        }
     }
 
     private fun setupEveningAzkarButton() {
