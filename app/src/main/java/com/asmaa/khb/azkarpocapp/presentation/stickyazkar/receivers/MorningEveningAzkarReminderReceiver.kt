@@ -4,11 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.asmaa.khb.azkarpocapp.domain.di.AzkarRepositoryEntryPoint
+import com.asmaa.khb.azkarpocapp.domain.repos.AzkarRepository
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_EVENING_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_MORNING_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IMAGE_RES
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_TEXT_CONTENT
+import com.asmaa.khb.azkarpocapp.presentation.util.isDeviceNotLocked
+import com.asmaa.khb.azkarpocapp.presentation.util.isWithinReminderTimeSpan
 import dagger.hilt.android.EntryPointAccessors
 
 class MorningEveningAzkarReminderReceiver : BroadcastReceiver() {
@@ -20,18 +23,49 @@ class MorningEveningAzkarReminderReceiver : BroadcastReceiver() {
             context, AzkarRepositoryEntryPoint::class.java
         ).azkarRepository()
 
-        val content = intent.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
-        val imageResId = intent.getIntExtra(EXTRA_IMAGE_RES, -1)
+        val isDeviceUnlocked = isDeviceNotLocked(context)
+        val canRetryReminder = repository.canStartReminderWithinRetryLimit()
 
-        repository.setIsReminderOn(true)
+        if (isDeviceUnlocked || canRetryReminder) {
+            val content = intent.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
+            val imageResId = intent.getIntExtra(EXTRA_IMAGE_RES, -1)
+            repository.setIsReminderOn(true)
+            AzkarWidgetService.showAzkar(context = context, content = content, imgRes = imageResId)
+        }
 
+        reScheduleReceivers(intent.action!!, isDeviceUnlocked, repository)
+    }
 
-        AzkarWidgetService.showAzkar(context = context, content = content, imgRes = imageResId)
+    private fun reScheduleReceivers(
+        action: String,
+        isDeviceUnlocked: Boolean,
+        repository: AzkarRepository
+    ) {
+        val reminderTime = when (action) {
+            ACTION_SHOW_MORNING_AZKAR -> repository.getMorningTimeFormat()
+            ACTION_SHOW_EVENING_AZKAR -> repository.getEveningTimeFormat()
+            else -> return
+        }
 
-        if (intent.action == ACTION_SHOW_MORNING_AZKAR) {
-            repository.scheduleMorningAzkarReceiver()
-        } else if (intent.action == ACTION_SHOW_EVENING_AZKAR) {
-            repository.scheduleEveningAzkarReceiver()
+        val isValidTimeSpan = isWithinReminderTimeSpan(reminderTime)
+
+        if (!isDeviceUnlocked && isValidTimeSpan) {
+            repository.setReminderRetriesCount(repository.getReminderRetriesCount() + 1)
+            when (action) {
+                ACTION_SHOW_MORNING_AZKAR -> repository.reScheduleMorningAzkarReceiverWithinShortTime(
+                    reminderTime
+                )
+
+                ACTION_SHOW_EVENING_AZKAR -> repository.reScheduleEveningAzkarReceiverWithinShortTime(
+                    reminderTime
+                )
+            }
+        } else {
+            repository.resetReminderRetriesCount()
+            when (action) {
+                ACTION_SHOW_MORNING_AZKAR -> repository.scheduleMorningAzkarReceiver()
+                ACTION_SHOW_EVENING_AZKAR -> repository.scheduleEveningAzkarReceiver()
+            }
         }
     }
 }

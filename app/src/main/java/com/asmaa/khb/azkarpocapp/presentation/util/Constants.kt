@@ -6,7 +6,10 @@ object Constants {
     const val CONST_PM = "PM"
     const val AUTO_SERVICE_STOPPING_PERIOD_IN_SEC = 10L
     const val SPLASH_DURATION_IN_SEC = 1L
-    const val NOTIFICATION_ID = 12
+    const val FOREGROUND_NOTIFICATION_ID = 1005
+    const val PERSISTENT_NOTIFICATION_ID = 1006
+    const val REMINDER_RETRIES_COUNT_LIMIT = 1
+
 
     //scheduler name
     const val MORNING_REMINDER_ALARM_REQUEST_CODE = 1001
@@ -19,5 +22,4 @@ object Constants {
     //extras
     const val EXTRA_TEXT_CONTENT = "extra_text_content"
     const val EXTRA_IMAGE_RES = "extra_image_res_id"
-    const val EXTRA_IS_REMINDER = "extra_is_reminder"
 }

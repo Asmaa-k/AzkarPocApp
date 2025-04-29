@@ -10,6 +10,8 @@ import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.MorningEveningAzkarReminderScheduler
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.ShortAzkarScheduler
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.REMINDER_RETRIES_COUNT_LIMIT
+import com.asmaa.khb.azkarpocapp.presentation.util.incrementByTwoMinutes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +98,13 @@ class AzkarRepository @Inject constructor(
     fun isReminderOn(): Boolean = azkarPreferences.isReminderOnScreen()
     fun setIsReminderOn(isOnScreen: Boolean) = azkarPreferences.setIsReminderOn(isOnScreen)
 
+    fun getReminderRetriesCount(): Int = azkarPreferences.getReminderRetriesCount()
+    fun setReminderRetriesCount(retries: Int) = azkarPreferences.setReminderRetriesCount(retries)
+    fun resetReminderRetriesCount() = azkarPreferences.setReminderRetriesCount(0)
+    fun canStartReminderWithinRetryLimit(): Boolean {
+        return azkarPreferences.getReminderRetriesCount() < REMINDER_RETRIES_COUNT_LIMIT
+    }
+
     suspend fun fetchRandomZker(): AzkarEntity? = dao.getRandomAzkar()
 
     suspend fun startPopupService() {
@@ -104,6 +113,28 @@ class AzkarRepository @Inject constructor(
             AzkarWidgetService.showAzkar(
                 context = context, content = content,
             )
+        }
+    }
+
+    fun reScheduleMorningAzkarReceiverWithinShortTime(reminderTime: ReminderAzkarTimeFormat) {
+        appScope.launch {
+            val updatedTime = reminderTime.incrementByTwoMinutes()
+            withContext(Dispatchers.IO) {
+                morningEveningAzkarReminderScheduler.scheduleMorningAzkar(
+                    updatedTime,
+                )
+            }
+        }
+    }
+
+    fun reScheduleEveningAzkarReceiverWithinShortTime(reminderTime: ReminderAzkarTimeFormat) {
+        appScope.launch {
+            val updatedTime = reminderTime.incrementByTwoMinutes()
+            withContext(Dispatchers.IO) {
+                morningEveningAzkarReminderScheduler.scheduleEveningAzkar(
+                    updatedTime,
+                )
+            }
         }
     }
 }

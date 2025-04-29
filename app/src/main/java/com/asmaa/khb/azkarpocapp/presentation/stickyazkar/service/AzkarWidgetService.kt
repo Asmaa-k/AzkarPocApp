@@ -2,6 +2,7 @@ package com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -20,7 +21,8 @@ import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarViewFacto
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.AUTO_SERVICE_STOPPING_PERIOD_IN_SEC
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IMAGE_RES
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_TEXT_CONTENT
-import com.asmaa.khb.azkarpocapp.presentation.util.Constants.NOTIFICATION_ID
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.FOREGROUND_NOTIFICATION_ID
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.PERSISTENT_NOTIFICATION_ID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -31,6 +33,7 @@ class AzkarWidgetService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private lateinit var azkarPreferences: AzkarPreferences
+    private lateinit var notificationManager: NotificationManager
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -38,6 +41,8 @@ class AzkarWidgetService : Service() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         azkarPreferences = AzkarPreferences(applicationContext)
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        createNotificationChannel()
     }
 
     companion object {
@@ -57,19 +62,12 @@ class AzkarWidgetService : Service() {
             showAzkarView(textContent, imgContent, azkarPreferences.isReminderOnScreen())
         }
 
-        createNotificationChannel()
+        // Start as foreground service (required for overlay permissions)
+        startForegroundServiceWithNotification()
 
-        val notification = NotificationCompat.Builder(this, "overlay_channel")
-            .setContentTitle("Show Azkar Service")
-            .setContentText("Showing your azkar")
-            .setSmallIcon(R.drawable.ic_exclamation_mark)
-            .build()
+        // Show separate persistent notification that will remain
+        if (azkarPreferences.isReminderOnScreen()) showPersistentNotification()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
         return START_STICKY
     }
 
@@ -112,6 +110,37 @@ class AzkarWidgetService : Service() {
         if (azkarPreferences.isReminderOnScreen()) azkarPreferences.setIsReminderOn(false)
     }
 
+    private fun startForegroundServiceWithNotification() {
+        val notification = NotificationCompat.Builder(this, "overlay_channel")
+            .setContentTitle("Azkar Service Running")
+            .setContentText("Showing your azkar")
+            .setSmallIcon(R.drawable.ic_exclamation_mark)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                FOREGROUND_NOTIFICATION_ID,
+                notification,
+                FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun showPersistentNotification() {
+        val notification = NotificationCompat.Builder(this, "overlay_channel")
+            .setContentTitle("Azkar Service Running")
+            .setContentText("Tap to open azkar")
+            .setSmallIcon(R.drawable.ic_exclamation_mark)
+            .setAutoCancel(false)
+            .setContentIntent(createPendingIntent())
+            .build()
+
+        notificationManager.notify(PERSISTENT_NOTIFICATION_ID, notification)
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -122,6 +151,16 @@ class AzkarWidgetService : Service() {
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(channel)
         }
+    }
+
+    private fun createPendingIntent(): PendingIntent {
+        val intent = Intent(this, AzkarWidgetService::class.java).apply {
+            putExtra(EXTRA_TEXT_CONTENT, "Default Azkar")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        return PendingIntent.getService(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun stopTheServiceAutomaticallyInCaseNotReminder(isReminder: Boolean) {

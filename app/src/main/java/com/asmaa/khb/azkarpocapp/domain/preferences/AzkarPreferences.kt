@@ -9,6 +9,7 @@ import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_FREQUENCY
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_IS_REMINDER_ON
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_MORNING_REMINDER_TIME
 import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_KEY_NAME
+import com.asmaa.khb.azkarpocapp.domain.util.Constants.PREFS_REMINDER_RETRIES_COUNT_LIMIT
 import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
 import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.CONST_AM
@@ -66,5 +67,15 @@ class AzkarPreferences @Inject constructor(
 
     fun isReminderOnScreen(): Boolean {
         return prefs.getBoolean(PREFS_KEY_IS_REMINDER_ON, false)
+    }
+
+    fun getReminderRetriesCount(): Int {
+        return prefs.getInt(PREFS_REMINDER_RETRIES_COUNT_LIMIT, 0)
+    }
+
+    fun setReminderRetriesCount(retries: Int) {
+        prefs.edit()
+            .putInt(PREFS_REMINDER_RETRIES_COUNT_LIMIT, retries)
+            .apply()
     }
 }

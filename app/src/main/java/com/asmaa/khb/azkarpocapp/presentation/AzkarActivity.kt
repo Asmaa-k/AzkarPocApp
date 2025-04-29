@@ -1,14 +1,21 @@
 package com.asmaa.khb.azkarpocapp.presentation
 
+import android.Manifest
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import com.asmaa.khb.azkarpocapp.R
 import com.asmaa.khb.azkarpocapp.databinding.ActivityTasbihBinding
 import com.asmaa.khb.azkarpocapp.presentation.models.ReminderAzkarTimeFormat
 import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants
+import com.asmaa.khb.azkarpocapp.presentation.util.registerNotificationPermissionLauncher
 import com.asmaa.khb.azkarpocapp.presentation.viewmodel.AzkarViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Calendar
@@ -17,6 +24,10 @@ import java.util.Calendar
 class AzkarActivity : ComponentActivity() {
     private val viewModel: AzkarViewModel by viewModels()
     private lateinit var binding: ActivityTasbihBinding
+    private val requestPermissionLauncher = registerNotificationPermissionLauncher(
+        onPermissionGranted = { handleNotificationPermissionResult(true) },
+        onPermissionDenied = { handleNotificationPermissionResult(false) }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,6 +35,7 @@ class AzkarActivity : ComponentActivity() {
         setContentView(binding.root)
 
         setupUi()
+        showNotificationPermissionDialogIfNeeded()
     }
 
     private fun setupUi() {
@@ -120,5 +132,31 @@ class AzkarActivity : ComponentActivity() {
         )
 
         timePicker.show()
+    }
+
+    private fun showNotificationPermissionDialogIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            AlertDialog.Builder(this)
+                .setTitle("Notification Permission")
+                .setMessage("We need permission to show Azkar reminders.")
+                .setPositiveButton("Allow") { _, _ ->
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                .setNegativeButton("No Thanks", null)
+                .show()
+        }
+    }
+
+    private fun handleNotificationPermissionResult(isGranted: Boolean) {
+        if (isGranted) {
+            // Permission granted, proceed with functionality that needs notifications
+            Log.d(AzkarActivity::class.simpleName, "handleNotificationPermissionResult: isGranted")
+        } else {
+            // Permission denied, handle the case (maybe show a message or provide alternate behavior)
+            Log.d(AzkarActivity::class.simpleName, "handleNotificationPermissionResult: isDenied")
+        }
     }
 }

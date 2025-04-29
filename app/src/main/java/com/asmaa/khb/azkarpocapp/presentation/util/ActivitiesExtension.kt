@@ -37,3 +37,13 @@ fun ComponentActivity.registerExactAlarmPermissionLauncher(
         onPermissionDenied()
     }
 }
+
+fun ComponentActivity.registerNotificationPermissionLauncher(
+    onPermissionGranted: () -> Unit, onPermissionDenied: () -> Unit
+) = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+    if (isGranted) {
+        onPermissionGranted()
+    } else {
+        onPermissionDenied()
+    }
+}

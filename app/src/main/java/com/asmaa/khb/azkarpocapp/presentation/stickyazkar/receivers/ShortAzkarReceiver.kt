@@ -7,6 +7,7 @@ import com.asmaa.khb.azkarpocapp.domain.di.AzkarRepositoryEntryPoint
 import com.asmaa.khb.azkarpocapp.domain.repos.AzkarRepository
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_SHORT_AZKAR
+import com.asmaa.khb.azkarpocapp.presentation.util.isDeviceNotLocked
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,6 @@ class ShortAzkarReceiver : BroadcastReceiver() {
     }
 
     private fun shouldStartService(context: Context, repository: AzkarRepository): Boolean {
-        // SharedPreferences or other logic
-        return !repository.isReminderOn()
+        return !repository.isReminderOn() && isDeviceNotLocked(context)
     }
 }
