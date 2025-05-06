@@ -30,7 +30,12 @@ class MorningEveningAzkarReminderReceiver : BroadcastReceiver() {
             val content = intent.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
             val imageResId = intent.getIntExtra(EXTRA_IMAGE_RES, -1)
             repository.setIsReminderOn(true)
-            AzkarWidgetService.showAzkar(context = context, content = content, imgRes = imageResId)
+            AzkarWidgetService.showAzkar(
+                context = context,
+                content = content,
+                imgRes = imageResId,
+                reminderViewType = true
+            )
         }
 
         reScheduleReceivers(intent.action!!, isDeviceUnlocked, repository)

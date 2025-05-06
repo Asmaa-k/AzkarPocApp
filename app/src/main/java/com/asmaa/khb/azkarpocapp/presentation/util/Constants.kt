@@ -7,7 +7,6 @@ object Constants {
     const val AUTO_SERVICE_STOPPING_PERIOD_IN_SEC = 10L
     const val SPLASH_DURATION_IN_SEC = 1L
     const val FOREGROUND_NOTIFICATION_ID = 1005
-    const val PERSISTENT_NOTIFICATION_ID = 1006
     const val REMINDER_RETRIES_COUNT_LIMIT = 1
 
 
@@ -22,4 +21,5 @@ object Constants {
     //extras
     const val EXTRA_TEXT_CONTENT = "extra_text_content"
     const val EXTRA_IMAGE_RES = "extra_image_res_id"
+    const val EXTRA_REMINDER_VIEW_TYPE= "EXTRA_REMINDER_VIEW_TYPE"
 }
