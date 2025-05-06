@@ -3,5 +3,5 @@ package com.asmaa.khb.azkarpocapp.presentation.models
 enum class ShortAzkarFrequency(val intervalInSec: Float) {
     LOW(30f),
     MID(15f),
-    HIGH(0.4f)
+    HIGH(5f)
 }
