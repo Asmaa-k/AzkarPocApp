@@ -13,8 +13,12 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import com.asmaa.khb.azkarpocapp.R
 import com.asmaa.khb.azkarpocapp.domain.preferences.AzkarPreferences
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarViewFactory.NO_IMAGE
@@ -29,16 +33,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-class AzkarWidgetService : Service() {
+class AzkarWidgetService : Service(), LifecycleOwner {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private lateinit var azkarPreferences: AzkarPreferences
     private lateinit var notificationManager: NotificationManager
+    private lateinit var lifecycleRegistry: LifecycleRegistry
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        lifecycleRegistry = LifecycleRegistry(this)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         azkarPreferences = AzkarPreferences(applicationContext)
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -62,6 +69,7 @@ class AzkarWidgetService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
         intent?.let {
             val textContent = it.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
             val imgContent = it.getIntExtra(EXTRA_IMAGE_RES, NO_IMAGE)
@@ -98,13 +106,21 @@ class AzkarWidgetService : Service() {
             textContent = textContent,
             imgContent = imgContent,
             isReminderViewType = isReminderView,
+            lifecycleOwner = this,
             onClose = {
                 stopSelf()
                 if (azkarPreferences.isReminderOnScreen()) showPersistentNotification()
                 reversReminderIfNeeded()
             },
             onViewClick = {}
-        )
+        ).apply {
+            alpha = 0f
+            animate()
+                .alpha(1f)
+                .setDuration(500L)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
 
         windowManager.addView(overlayView, layoutParams)
 
@@ -124,7 +140,11 @@ class AzkarWidgetService : Service() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(FOREGROUND_NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(
+                FOREGROUND_NOTIFICATION_ID,
+                notification,
+                FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
         } else {
             startForeground(FOREGROUND_NOTIFICATION_ID, notification)
         }
@@ -180,8 +200,12 @@ class AzkarWidgetService : Service() {
     }
 
     override fun onDestroy() {
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         removeExistingView()
         reversReminderIfNeeded()
         super.onDestroy()
     }
+
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
 }
