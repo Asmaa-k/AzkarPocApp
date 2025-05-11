@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 object AzkarViewFactory {
     const val NO_IMAGE = -1
     private const val HIGHLIGHT_COLOR = Color.RED
-    private const val ANIMATION_DELAY = 200L
+    private const val ANIMATION_DELAY = 300L
 
     fun createAzkarView(
         context: Context,
