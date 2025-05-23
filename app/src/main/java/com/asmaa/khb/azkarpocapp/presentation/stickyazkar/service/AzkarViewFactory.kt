@@ -13,6 +13,8 @@ import androidx.annotation.DrawableRes
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.asmaa.khb.azkarpocapp.R
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_EVENING_AZKAR
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_MORNING_AZKAR
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -28,13 +30,13 @@ object AzkarViewFactory {
         context: Context,
         textContent: String,
         @DrawableRes imgContent: Int = NO_IMAGE,
-        isReminderViewType: Boolean,
+        viewType: String,
         lifecycleOwner: LifecycleOwner,
         onViewClick: () -> Unit,
         onClose: () -> Unit,
     ): View {
         val inflater = LayoutInflater.from(context)
-        return if (isReminderViewType) {
+        return if (viewType == ACTION_SHOW_MORNING_AZKAR || viewType == ACTION_SHOW_EVENING_AZKAR) {
             inflater.inflate(R.layout.evening_morning_azkar_reminder_view, null).apply {
                 setupMorningEveningAzkarReminderView(
                     textContent, imgContent, onViewClick, onClose

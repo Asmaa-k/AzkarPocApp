@@ -17,9 +17,13 @@ object Constants {
     const val ACTION_SHOW_MORNING_AZKAR = "action_show_morning_azkar"
     const val ACTION_SHOW_EVENING_AZKAR = "action_show_evening_azkar"
     const val ACTION_SHOW_SHORT_AZKAR = "action_show_short_azkar"
+    const val WORKER_AZKAR_TYPE = "worker_azkar_type"
 
     //extras
     const val EXTRA_TEXT_CONTENT = "extra_text_content"
     const val EXTRA_IMAGE_RES = "extra_image_res_id"
-    const val EXTRA_REMINDER_VIEW_TYPE= "EXTRA_REMINDER_VIEW_TYPE"
+    const val EXTRA_VIEW_TYPE = "extra_view_type"
+    const val EXTRA_SHOULD_STOP_SERVICE = "extra_should_stop_service"
+    const val EXTRA_SHOW_MORNING_AZKAR_SHORTER_TIME_SCHEDULER = "show_morning_azkar_shorter_time_scheduler"
+    const val EXTRA_SHOW_EVENING_AZKAR_SHORTER_TIME_SCHEDULER = "show_evening_azkar_shorter_time_scheduler"
 }

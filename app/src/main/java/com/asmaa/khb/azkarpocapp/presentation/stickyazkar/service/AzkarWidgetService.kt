@@ -21,11 +21,15 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import com.asmaa.khb.azkarpocapp.R
 import com.asmaa.khb.azkarpocapp.domain.preferences.AzkarPreferences
+import com.asmaa.khb.azkarpocapp.presentation.SplashActivity
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarViewFactory.NO_IMAGE
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_EVENING_AZKAR
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_MORNING_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.AUTO_SERVICE_STOPPING_PERIOD_IN_SEC
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IMAGE_RES
-import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_REMINDER_VIEW_TYPE
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_SHOULD_STOP_SERVICE
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_TEXT_CONTENT
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_VIEW_TYPE
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.FOREGROUND_NOTIFICATION_ID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +43,7 @@ class AzkarWidgetService : Service(), LifecycleOwner {
     private lateinit var azkarPreferences: AzkarPreferences
     private lateinit var notificationManager: NotificationManager
     private lateinit var lifecycleRegistry: LifecycleRegistry
+    private lateinit var viewType: String
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -54,15 +59,12 @@ class AzkarWidgetService : Service(), LifecycleOwner {
 
     companion object {
         fun showAzkar(
-            context: Context,
-            content: String,
-            imgRes: Int = -1,
-            reminderViewType: Boolean = false
+            context: Context, content: String, imgRes: Int = -1, viewType: String
         ) {
             val intent = Intent(context, AzkarWidgetService::class.java).apply {
                 putExtra(EXTRA_TEXT_CONTENT, content)
                 putExtra(EXTRA_IMAGE_RES, imgRes)
-                putExtra(EXTRA_REMINDER_VIEW_TYPE, reminderViewType)
+                putExtra(EXTRA_VIEW_TYPE, viewType)
             }
             ContextCompat.startForegroundService(context, intent)
         }
@@ -73,8 +75,8 @@ class AzkarWidgetService : Service(), LifecycleOwner {
         intent?.let {
             val textContent = it.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
             val imgContent = it.getIntExtra(EXTRA_IMAGE_RES, NO_IMAGE)
-            val reminderType = it.getBooleanExtra(EXTRA_REMINDER_VIEW_TYPE, false)
-            showAzkarView(textContent, imgContent, reminderType)
+            viewType = it.getStringExtra(EXTRA_VIEW_TYPE).orEmpty()
+            showAzkarView(textContent, imgContent, viewType)
         }
 
         // Start as foreground service (required for overlay permissions)
@@ -83,7 +85,7 @@ class AzkarWidgetService : Service(), LifecycleOwner {
         return START_STICKY
     }
 
-    private fun showAzkarView(textContent: String, imgContent: Int, isReminderView: Boolean) {
+    private fun showAzkarView(textContent: String, imgContent: Int, viewType: String) {
         removeExistingView()
 
         val layoutParams = WindowManager.LayoutParams().apply {
@@ -105,14 +107,17 @@ class AzkarWidgetService : Service(), LifecycleOwner {
             context = this,
             textContent = textContent,
             imgContent = imgContent,
-            isReminderViewType = isReminderView,
+            viewType = viewType,
             lifecycleOwner = this,
             onClose = {
+                setDismissReminderManually()
                 stopSelf()
-                if (azkarPreferences.isReminderOnScreen()) showPersistentNotification()
-                reversReminderIfNeeded()
             },
-            onViewClick = {}
+            onViewClick = {
+                setDismissReminderManually()
+                startActivity(getAppIntent())
+                stopSelf()
+            }
         ).apply {
             alpha = 0f
             animate()
@@ -127,14 +132,31 @@ class AzkarWidgetService : Service(), LifecycleOwner {
         stopTheServiceAutomaticallyInCaseNotReminder(azkarPreferences.isReminderOnScreen())
     }
 
-    private fun reversReminderIfNeeded() {
-        if (azkarPreferences.isReminderOnScreen()) azkarPreferences.setIsReminderOn(false)
+    private fun getAppIntent(): Intent {
+        return Intent(this, SplashActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra(EXTRA_SHOULD_STOP_SERVICE, true)
+        }
+    }
+
+    private fun reversReminderFlagsIfNeeded() {
+        if (azkarPreferences.isReminderOnScreen()) {
+            azkarPreferences.setIsReminderOn(false)
+        }
+    }
+
+    private fun setDismissReminderManually() {
+        if (azkarPreferences.isReminderOnScreen()) {
+            azkarPreferences.onManuallyEveningReminderDismissed(viewType == ACTION_SHOW_EVENING_AZKAR)
+            azkarPreferences.onManuallyMorningReminderDismissed(viewType == ACTION_SHOW_MORNING_AZKAR)
+        }
     }
 
     private fun startForegroundServiceWithNotification() {
         val notification = NotificationCompat.Builder(this, "overlay_channel")
             .setContentTitle("Azkar Service Running")
             .setContentText("Showing your azkar")
+            .setContentIntent(createPendingIntent())
             .setSmallIcon(R.drawable.ic_exclamation_mark)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -151,6 +173,7 @@ class AzkarWidgetService : Service(), LifecycleOwner {
     }
 
     private fun showPersistentNotification() {
+        if (!azkarPreferences.isReminderOnScreen()) return
         val notification = NotificationCompat.Builder(this, "overlay_channel")
             .setContentTitle("Azkar Service Running")
             .setContentText("Tap to open azkar")
@@ -174,11 +197,11 @@ class AzkarWidgetService : Service(), LifecycleOwner {
     }
 
     private fun createPendingIntent(): PendingIntent {
-        val intent = Intent(this, AzkarWidgetService::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        return PendingIntent.getService(
-            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getActivity(
+            this,
+            0,
+            getAppIntent(),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
@@ -201,8 +224,9 @@ class AzkarWidgetService : Service(), LifecycleOwner {
 
     override fun onDestroy() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        showPersistentNotification()
+        reversReminderFlagsIfNeeded()
         removeExistingView()
-        reversReminderIfNeeded()
         super.onDestroy()
     }
 

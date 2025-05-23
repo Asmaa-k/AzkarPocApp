@@ -54,7 +54,7 @@ class AzkarActivity : ComponentActivity() {
     private fun setupEveningAzkarButton() {
         binding.btnEvening.setOnClickListener {
             showTimePicker(viewModel.getEveningTimeFormat()) { time ->
-                viewModel.saveAndReScheduleEveningAzkarReminder(time)
+                viewModel.saveAndReScheduleEveningAzkarReminder(this, time)
             }
         }
     }
@@ -62,7 +62,7 @@ class AzkarActivity : ComponentActivity() {
     private fun setupMorningAzkarButton() {
         binding.btnMorning.setOnClickListener {
             showTimePicker(viewModel.getMorningTimeFormat()) { time ->
-                viewModel.saveAndReScheduleMorningAzkarReminder(time)
+                viewModel.saveAndReScheduleMorningAzkarReminder(this, time)
             }
         }
     }
@@ -79,15 +79,15 @@ class AzkarActivity : ComponentActivity() {
         binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.optLow -> {
-                    viewModel.saveAndReScheduleShortAzkar(ShortAzkarFrequency.LOW)
+                    viewModel.saveAndReScheduleShortAzkar(this, ShortAzkarFrequency.LOW)
                 }
 
                 R.id.optMid -> {
-                    viewModel.saveAndReScheduleShortAzkar(ShortAzkarFrequency.MID)
+                    viewModel.saveAndReScheduleShortAzkar(this, ShortAzkarFrequency.MID)
                 }
 
                 R.id.optHigh -> {
-                    viewModel.saveAndReScheduleShortAzkar(ShortAzkarFrequency.HIGH)
+                    viewModel.saveAndReScheduleShortAzkar(this, ShortAzkarFrequency.HIGH)
                 }
             }
         }

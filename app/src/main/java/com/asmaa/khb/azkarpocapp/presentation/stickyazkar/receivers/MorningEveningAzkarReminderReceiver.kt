@@ -6,6 +6,10 @@ import android.content.Intent
 import com.asmaa.khb.azkarpocapp.domain.di.AzkarRepositoryEntryPoint
 import com.asmaa.khb.azkarpocapp.domain.repos.AzkarRepository
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.reScheduleEveningAzkarScheduleWorkerForShorterTime
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.reScheduleMorningAzkarScheduleWorkerForShorterTime
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.scheduleEveningAzkarScheduleWorker
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.scheduleMorningAzkarScheduleWorker
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_EVENING_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_MORNING_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_IMAGE_RES
@@ -13,64 +17,108 @@ import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_TEXT_CONTENT
 import com.asmaa.khb.azkarpocapp.presentation.util.isDeviceNotLocked
 import com.asmaa.khb.azkarpocapp.presentation.util.isWithinReminderTimeSpan
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class MorningEveningAzkarReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
+        if (action != ACTION_SHOW_MORNING_AZKAR && action != ACTION_SHOW_EVENING_AZKAR) {
+            return
+        }
 
-        if (action != ACTION_SHOW_MORNING_AZKAR && action != ACTION_SHOW_EVENING_AZKAR) return
         val repository = EntryPointAccessors.fromApplication(
             context, AzkarRepositoryEntryPoint::class.java
         ).azkarRepository()
 
+        val isManualDismiss = shouldSkipReminderDueToManualDismissal(action, repository)
         val isDeviceUnlocked = isDeviceNotLocked(context)
         val canRetryReminder = repository.canStartReminderWithinRetryLimit()
 
-        if (isDeviceUnlocked || canRetryReminder) {
+        if ((!isManualDismiss) && (isDeviceUnlocked || canRetryReminder)) {
             val content = intent.getStringExtra(EXTRA_TEXT_CONTENT).orEmpty()
             val imageResId = intent.getIntExtra(EXTRA_IMAGE_RES, -1)
             repository.setIsReminderOn(true)
             AzkarWidgetService.showAzkar(
-                context = context,
-                content = content,
-                imgRes = imageResId,
-                reminderViewType = true
+                context = context, content = content, imgRes = imageResId, viewType = action
             )
         }
 
-        reScheduleReceivers(intent.action!!, isDeviceUnlocked, repository)
+        reScheduleReceivers(
+            context,
+            repository,
+            isManualDismiss,
+            isDeviceUnlocked,
+            intent.action!!,
+        )
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun reScheduleReceivers(
-        action: String,
+        context: Context,
+        repository: AzkarRepository,
+        isManualDismiss: Boolean,
         isDeviceUnlocked: Boolean,
-        repository: AzkarRepository
+        action: String
     ) {
-        val reminderTime = when (action) {
-            ACTION_SHOW_MORNING_AZKAR -> repository.getMorningTimeFormat()
-            ACTION_SHOW_EVENING_AZKAR -> repository.getEveningTimeFormat()
-            else -> return
+        GlobalScope.launch(Dispatchers.IO) {
+            val isMorning = action == ACTION_SHOW_MORNING_AZKAR
+            val reminderTime = repository.getCurrentCumulativeReminderTime(
+                if (isMorning) repository.getMorningTimeFormat()
+                else repository.getEveningTimeFormat()
+            )
+
+            val shouldRetry =
+                !isDeviceUnlocked && !isManualDismiss && isWithinReminderTimeSpan(reminderTime)
+
+            if (shouldRetry) {
+                repository.setReminderRetriesCount(repository.getReminderRetriesCount() + 1)
+                rescheduleShorterTime(context, isMorning)
+            } else {
+                restReminderFlags(repository)
+                scheduleFullReminder(context, isMorning)
+            }
         }
+    }
 
-        val isValidTimeSpan = isWithinReminderTimeSpan(reminderTime)
+    private fun restReminderFlags(repository: AzkarRepository) {
+        repository.resetReminderRetriesCount()
+        repository.restCumulativeReminderTime()
+        repository.onManuallyEveningReminderDismissed(false)
+        repository.onManuallyMorningReminderDismissed(false)
+    }
 
-        if (!isDeviceUnlocked && isValidTimeSpan) {
-            repository.setReminderRetriesCount(repository.getReminderRetriesCount() + 1)
-            when (action) {
-                ACTION_SHOW_MORNING_AZKAR -> repository.reScheduleMorningAzkarReceiverWithinShortTime(
-                    reminderTime
-                )
-
-                ACTION_SHOW_EVENING_AZKAR -> repository.reScheduleEveningAzkarReceiverWithinShortTime(
-                    reminderTime
-                )
-            }
+    private fun rescheduleShorterTime(context: Context, isMorning: Boolean) {
+        if (isMorning) {
+            reScheduleMorningAzkarScheduleWorkerForShorterTime(context)
         } else {
-            repository.resetReminderRetriesCount()
-            when (action) {
-                ACTION_SHOW_MORNING_AZKAR -> repository.scheduleMorningAzkarReceiver()
-                ACTION_SHOW_EVENING_AZKAR -> repository.scheduleEveningAzkarReceiver()
+            reScheduleEveningAzkarScheduleWorkerForShorterTime(context)
+        }
+    }
+
+    private fun scheduleFullReminder(context: Context, isMorning: Boolean) {
+        if (isMorning) {
+            scheduleMorningAzkarScheduleWorker(context)
+        } else {
+            scheduleEveningAzkarScheduleWorker(context)
+        }
+    }
+
+    private fun shouldSkipReminderDueToManualDismissal(
+        action: String, repository: AzkarRepository
+    ): Boolean {
+        return when (action) {
+            ACTION_SHOW_MORNING_AZKAR -> {
+                repository.isManuallyMorningReminderDismissed()
             }
+
+            ACTION_SHOW_EVENING_AZKAR -> {
+                repository.isManuallyEveningReminderDismissed()
+            }
+
+            else -> false
         }
     }
 }

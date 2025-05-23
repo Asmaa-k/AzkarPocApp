@@ -10,6 +10,7 @@ import com.asmaa.khb.azkarpocapp.presentation.models.ShortAzkarFrequency
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.MorningEveningAzkarReminderScheduler
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.schedulers.ShortAzkarScheduler
 import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.ACTION_SHOW_SHORT_AZKAR
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.REMINDER_RETRIES_COUNT_LIMIT
 import com.asmaa.khb.azkarpocapp.presentation.util.incrementByTwoMinutes
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -74,19 +75,47 @@ class AzkarRepository @Inject constructor(
         }
     }
 
-    fun saveAndReScheduleEveningAzkarReminder(time: ReminderAzkarTimeFormat) {
+    fun saveEveningAzkarReminder(time: ReminderAzkarTimeFormat) {
         azkarPreferences.saveEveningTimeFormat(time)
-        scheduleEveningAzkarReceiver()
     }
 
-    fun saveAndReScheduleMorningAzkarReminder(time: ReminderAzkarTimeFormat) {
+    fun saveMorningAzkarReminder(time: ReminderAzkarTimeFormat) {
         azkarPreferences.saveMorningTimeFormat(time)
-        scheduleMorningAzkarReceiver()
     }
 
-    fun saveAndReScheduleShortAzkar(value: ShortAzkarFrequency) {
+    private fun cumulativeReminderTime(initTime: ReminderAzkarTimeFormat): ReminderAzkarTimeFormat {
+        val oldTimeFormat = getCurrentCumulativeReminderTime(initTime)
+        val cumulativeTimeFormat = oldTimeFormat.incrementByTwoMinutes()
+        azkarPreferences.setCumulativeReminderTime(cumulativeTimeFormat)
+        return cumulativeTimeFormat
+    }
+
+    fun restCumulativeReminderTime() {
+        azkarPreferences.setCumulativeReminderTime(null)
+    }
+
+    fun getCurrentCumulativeReminderTime(initTime: ReminderAzkarTimeFormat): ReminderAzkarTimeFormat {
+        return azkarPreferences.getCumulativeReminderTime() ?: initTime
+    }
+
+    fun isManuallyMorningReminderDismissed(): Boolean {
+        return azkarPreferences.isManuallyMorningReminderDismissed()
+    }
+
+    fun onManuallyMorningReminderDismissed(dismiss: Boolean) {
+        azkarPreferences.onManuallyMorningReminderDismissed(dismiss)
+    }
+
+    fun isManuallyEveningReminderDismissed(): Boolean {
+        return azkarPreferences.isManuallyEveningReminderDismissed()
+    }
+
+    fun onManuallyEveningReminderDismissed(dismiss: Boolean) {
+        azkarPreferences.onManuallyEveningReminderDismissed(dismiss)
+    }
+
+    fun saveShortAzkarFrequency(value: ShortAzkarFrequency) {
         azkarPreferences.saveAzkarFrequency(value)
-        scheduleShortAzkarReceiver()
     }
 
     fun getCurrentFrequency(): ShortAzkarFrequency = azkarPreferences.getAzkarFrequency()
@@ -111,14 +140,14 @@ class AzkarRepository @Inject constructor(
         val content = fetchRandomZker()?.content
         if (!content.isNullOrBlank()) {
             AzkarWidgetService.showAzkar(
-                context = context, content = content,
+                context = context, content = content, viewType = ACTION_SHOW_SHORT_AZKAR
             )
         }
     }
 
-    fun reScheduleMorningAzkarReceiverWithinShortTime(reminderTime: ReminderAzkarTimeFormat) {
+    fun reScheduleMorningAzkarReceiverWithinShortTime() {
         appScope.launch {
-            val updatedTime = reminderTime.incrementByTwoMinutes()
+            val updatedTime = cumulativeReminderTime(getMorningTimeFormat())
             withContext(Dispatchers.IO) {
                 morningEveningAzkarReminderScheduler.scheduleMorningAzkar(
                     updatedTime,
@@ -127,9 +156,9 @@ class AzkarRepository @Inject constructor(
         }
     }
 
-    fun reScheduleEveningAzkarReceiverWithinShortTime(reminderTime: ReminderAzkarTimeFormat) {
+    fun reScheduleEveningAzkarReceiverWithinShortTime() {
         appScope.launch {
-            val updatedTime = reminderTime.incrementByTwoMinutes()
+            val updatedTime = cumulativeReminderTime(getEveningTimeFormat())
             withContext(Dispatchers.IO) {
                 morningEveningAzkarReminderScheduler.scheduleEveningAzkar(
                     updatedTime,

@@ -1,31 +1,29 @@
 package com.asmaa.khb.azkarpocapp.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.asmaa.khb.azkarpocapp.domain.repos.AzkarRepository
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.scheduleEveningAzkarScheduleWorker
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.scheduleMorningAzkarScheduleWorker
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.workers.scheduleShortAzkarScheduleWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SplashViewModel @Inject constructor(private val repository: AzkarRepository) : ViewModel() {
+class SplashViewModel @Inject constructor(
+    private val repository: AzkarRepository,
+) : ViewModel() {
 
     fun insertInitialAzkarIfNeeded() {
-        viewModelScope.launch {
-            repository.insertInitialAzkarIfNeeded()
-        }
+        repository.insertInitialAzkarIfNeeded()
     }
 
-    fun scheduleEveningMorningReminderAzkar() {
-        viewModelScope.launch {
-            repository.scheduleMorningAzkarReceiver()
-            repository.scheduleEveningAzkarReceiver()
-        }
+    fun scheduleEveningMorningReminderAzkar(context: Context) {
+        scheduleEveningAzkarScheduleWorker(context)
+        scheduleMorningAzkarScheduleWorker(context)
     }
 
-    fun scheduleShortAzkar() {
-        viewModelScope.launch {
-            repository.scheduleShortAzkarReceiver()
-        }
+    fun scheduleShortAzkar(context: Context) {
+        scheduleShortAzkarScheduleWorker(context)
     }
 }

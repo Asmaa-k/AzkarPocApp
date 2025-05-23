@@ -4,14 +4,16 @@ import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.asmaa.khb.azkarpocapp.R
+import com.asmaa.khb.azkarpocapp.presentation.stickyazkar.service.AzkarWidgetService
+import com.asmaa.khb.azkarpocapp.presentation.util.Constants.EXTRA_SHOULD_STOP_SERVICE
 import com.asmaa.khb.azkarpocapp.presentation.util.Constants.SPLASH_DURATION_IN_SEC
 import com.asmaa.khb.azkarpocapp.presentation.util.registerExactAlarmPermissionLauncher
 import com.asmaa.khb.azkarpocapp.presentation.util.registerOverlayPermissionLauncher
@@ -29,27 +31,47 @@ class SplashActivity : AppCompatActivity() {
     private val overlayServicePermissionLauncher by lazy {
         registerOverlayPermissionLauncher(
             onPermissionGranted = (::requestExactAlarmPermissionIfNeededAndStartReceivers),
-            onPermissionDenied = (::startAzkarActivity)
+            onPermissionDenied = {
+                lifecycleScope.launch {
+                    startAzkarActivity()
+                }
+            }
         )
     }
 
     private val exactAlarmPermissionLauncher by lazy {
         registerExactAlarmPermissionLauncher(
             onPermissionGranted = (::startSchedulingAzkarReceivers),
-            onPermissionDenied = (::startAzkarActivity)
+            onPermissionDenied = {
+                lifecycleScope.launch {
+                    startAzkarActivity()
+                }
+            }
         )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
+        stopRunningService()
         requestOverlayPermissionIfNeeded()
+    }
+
+    private fun stopRunningService() {
+        if (intent?.getBooleanExtra(EXTRA_SHOULD_STOP_SERVICE, false) == true) {
+            stopAzkarService()
+        }
+    }
+
+    private fun stopAzkarService() {
+        val serviceIntent = Intent(this, AzkarWidgetService::class.java)
+        stopService(serviceIntent)
     }
 
     private fun requestOverlayPermissionIfNeeded() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri()
             )
             overlayServicePermissionLauncher.launch(intent)
         } else {
@@ -78,17 +100,15 @@ class SplashActivity : AppCompatActivity() {
     private fun startSchedulingAzkarReceivers() {
         lifecycleScope.launch {
             viewModel.insertInitialAzkarIfNeeded()
-            viewModel.scheduleShortAzkar()
-            viewModel.scheduleEveningMorningReminderAzkar()
+            viewModel.scheduleShortAzkar(this@SplashActivity)
+            viewModel.scheduleEveningMorningReminderAzkar(this@SplashActivity)
             startAzkarActivity()
         }
     }
 
-    private fun startAzkarActivity() {
-        lifecycleScope.launch {
-            delay(TimeUnit.SECONDS.toMillis(SPLASH_DURATION_IN_SEC))
-            startActivity(Intent(this@SplashActivity, AzkarActivity::class.java))
-            finish()
-        }
+    private suspend fun startAzkarActivity() {
+        delay(TimeUnit.SECONDS.toMillis(SPLASH_DURATION_IN_SEC))
+        startActivity(Intent(this@SplashActivity, AzkarActivity::class.java))
+        finish()
     }
 }
